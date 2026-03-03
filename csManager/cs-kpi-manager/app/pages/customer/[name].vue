@@ -120,7 +120,7 @@ const dealRows = computed(() =>
   <div v-if="loaded">
     <div class="page-header">
       <div class="page-header__breadcrumb">
-        <NuxtLink to="/unit-economics" class="breadcrumb-link">ユニットエコノミクス</NuxtLink>
+        <NuxtLink to="/customer" class="breadcrumb-link">顧客分析</NuxtLink>
         <span class="breadcrumb-sep">/</span>
         <span>顧客詳細</span>
       </div>
@@ -157,6 +157,7 @@ const dealRows = computed(() =>
         <KpiCard label="LTV（累計粗利）" :value="formatCurrency(kpiSummary.ltv)" />
         <KpiCard label="平均案件単価" :value="formatCurrency(Math.round(kpiSummary.avgDealSize))" />
         <KpiCard label="月あたり粗利" :value="formatCurrency(Math.round(kpiSummary.gpPerMonth))" />
+        <KpiCard label="ARPU（月平均売上）" :value="formatCurrency(Math.round(kpiSummary.revenuePerMonth))" />
       </div>
 
       <!-- 月次推移チャート -->
@@ -214,6 +215,28 @@ const dealRows = computed(() =>
           </div>
           <div class="card-body">
             <p>{{ analysis.evaluation }}</p>
+          </div>
+        </div>
+
+        <!-- フォローアップ推奨 -->
+        <div class="card">
+          <div class="card-header">
+            <h4 class="card-title">
+              フォローアップ推奨
+              <span
+                class="risk-badge"
+                :class="{
+                  'risk-badge--error': analysis.riskLevel === 'at-risk',
+                  'risk-badge--warning': analysis.riskLevel === 'stable',
+                  'risk-badge--success': analysis.riskLevel === 'growth',
+                }"
+              >
+                {{ analysis.riskLevel === 'at-risk' ? 'リスクあり' : analysis.riskLevel === 'growth' ? 'アップセル機会' : '安定' }}
+              </span>
+            </h4>
+          </div>
+          <div class="card-body">
+            <p>{{ analysis.followUpRecommendation }}</p>
           </div>
         </div>
 
@@ -419,5 +442,30 @@ const dealRows = computed(() =>
 
 .analysis-list li:last-child {
   margin-bottom: 0;
+}
+
+.risk-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  margin-left: var(--space-sm);
+  vertical-align: middle;
+}
+
+.risk-badge--error {
+  background: var(--color-error-light, #FFEBE6);
+  color: var(--color-error);
+}
+
+.risk-badge--warning {
+  background: #FFF0B3;
+  color: #FF8B00;
+}
+
+.risk-badge--success {
+  background: #E3FCEF;
+  color: #006644;
 }
 </style>

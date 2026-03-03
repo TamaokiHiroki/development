@@ -1,5 +1,5 @@
 import { useDataset } from './useDataset'
-import { getFiscalYear, getMonthsInFiscalYear } from '~/utils/fiscalYear'
+import { getFiscalYear, getMonthsInFiscalYear, getElapsedMonths } from '~/utils/fiscalYear'
 import type { DealRecord } from '~/utils/csvParser'
 
 const AD_SOURCES = ['01_LP（広告）']
@@ -12,6 +12,7 @@ export interface UnitEconomicsData {
   newCustomers: number
   totalGP: number
   totalAdCost: number
+  arpu: number
 }
 
 export interface CustomerSegment {
@@ -80,7 +81,14 @@ export function useUnitEconomics() {
 
     const ltvCacRatio = cac > 0 ? ltv / cac : 0
 
-    return { ltv, cac, ltvCacRatio, uniqueCustomers, newCustomers, totalGP, totalAdCost }
+    // ARPU: (総売上÷経過月数) ÷ ユニーク顧客数
+    const totalRevenue = fyDeals.reduce((s, d) => s + d.totalAmount, 0)
+    const elapsedMonths = getElapsedMonths(fy)
+    const arpu = elapsedMonths > 0 && uniqueCustomers > 0
+      ? (totalRevenue / elapsedMonths) / uniqueCustomers
+      : 0
+
+    return { ltv, cac, ltvCacRatio, uniqueCustomers, newCustomers, totalGP, totalAdCost, arpu }
   }
 
   function getMonthlyLtvCac(fy: number) {
@@ -191,11 +199,30 @@ export function useUnitEconomics() {
     }))
   }
 
+  /**
+   * YYYY/MM 間のカレンダー月数差（inclusive）
+   */
+  function getMonthSpan(first: string, last: string): number {
+    const [y1, m1] = first.split('/').map(Number)
+    const [y2, m2] = last.split('/').map(Number)
+    return (y2 - y1) * 12 + (m2 - m1) + 1
+  }
+
+  /**
+   * 単発案件顧客: 初回〜最終取引の期間が3ヶ月以内
+   */
+  function getOneOffCustomers(fy: number): CustomerSegment[] {
+    return getCustomerSegments(fy).filter(
+      (c) => getMonthSpan(c.firstMonth, c.lastMonth) <= 3,
+    )
+  }
+
   return {
     getUnitEconomics,
     getMonthlyLtvCac,
     getCustomerSegments,
     getTenureSegments,
     getCustomerUnitEconomicsList,
+    getOneOffCustomers,
   }
 }

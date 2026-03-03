@@ -20,7 +20,6 @@ const repName = computed(() => decodeURIComponent(route.params.name as string))
 
 const csRepInfo = computed(() => getCsRepByName(repName.value))
 const isRegistered = computed(() => !!csRepInfo.value)
-const repTitle = computed(() => csRepInfo.value?.title || '')
 const repTeam = computed(() => csRepInfo.value?.team || '')
 const repGrade = computed(() => csRepInfo.value?.grade || '')
 const repSupplement = computed(() => csRepInfo.value?.supplement || '')
@@ -87,11 +86,14 @@ const tableRows = computed(() =>
 )
 
 // 役職分析
-const analysis = computed(() => generateRepAnalysis(
-  fy.value, repName.value, repGrade.value, repSupplement.value,
-  csRepInfo.value?.revenueTarget ?? 0,
-  csRepInfo.value?.grossProfitTarget ?? 0,
-))
+const analysis = computed(() => {
+  const target = csRepInfo.value?.targets?.[fy.value]
+  return generateRepAnalysis(
+    fy.value, repName.value, repGrade.value, repSupplement.value,
+    target?.revenueTarget ?? 0,
+    target?.grossProfitTarget ?? 0,
+  )
+})
 </script>
 
 <template>
@@ -161,9 +163,9 @@ const analysis = computed(() => generateRepAnalysis(
       </div>
 
       <!-- 目標KPIカード -->
-      <div v-if="csRepInfo?.revenueTarget || csRepInfo?.grossProfitTarget" class="kpi-grid">
-        <KpiCard v-if="csRepInfo?.revenueTarget" label="売上目標" :value="formatCurrency(csRepInfo.revenueTarget)" />
-        <KpiCard v-if="csRepInfo?.grossProfitTarget" label="粗利目標" :value="formatCurrency(csRepInfo.grossProfitTarget)" />
+      <div v-if="csRepInfo?.targets?.[fy]?.revenueTarget || csRepInfo?.targets?.[fy]?.grossProfitTarget" class="kpi-grid">
+        <KpiCard v-if="csRepInfo?.targets?.[fy]?.revenueTarget" label="売上目標" :value="formatCurrency(csRepInfo.targets[fy].revenueTarget)" />
+        <KpiCard v-if="csRepInfo?.targets?.[fy]?.grossProfitTarget" label="粗利目標" :value="formatCurrency(csRepInfo.targets[fy].grossProfitTarget)" />
       </div>
 
       <!-- 月ごとの振り返り -->

@@ -3,12 +3,10 @@ const STORAGE_KEY = 'cs-kpi-cs-reps'
 export interface CsRep {
   id: string
   name: string
-  title: string
   team: string
   grade: string
   supplement: string
-  revenueTarget: number
-  grossProfitTarget: number
+  targets: Record<number, { revenueTarget: number; grossProfitTarget: number }>
 }
 
 function generateId(): string {
@@ -23,14 +21,26 @@ export function useCsReps() {
     if (csRepsLoaded.value || import.meta.server) return
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
-      csReps.value = raw ? JSON.parse(raw).map((r: any) => ({
-        ...r,
-        team: r.team || '',
-        grade: r.grade || '',
-        supplement: r.supplement || '',
-        revenueTarget: r.revenueTarget ?? 0,
-        grossProfitTarget: r.grossProfitTarget ?? 0,
-      })) : []
+      csReps.value = raw ? JSON.parse(raw).map((r: any) => {
+        // Migration: convert old flat revenueTarget/grossProfitTarget to targets[2026]
+        let targets = r.targets || {}
+        if (!r.targets && (r.revenueTarget || r.grossProfitTarget)) {
+          targets = {
+            2026: {
+              revenueTarget: r.revenueTarget ?? 0,
+              grossProfitTarget: r.grossProfitTarget ?? 0,
+            },
+          }
+        }
+        return {
+          id: r.id,
+          name: r.name,
+          team: r.team || '',
+          grade: r.grade || '',
+          supplement: r.supplement || '',
+          targets,
+        }
+      }) : []
     } catch {
       csReps.value = []
     }
@@ -42,17 +52,17 @@ export function useCsReps() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(csReps.value))
   }
 
-  function addCsRep(name: string, title: string, team: string, grade: string, supplement: string, revenueTarget = 0, grossProfitTarget = 0): CsRep {
-    const rep: CsRep = { id: generateId(), name: name.trim(), title: title.trim(), team, grade, supplement: supplement.trim(), revenueTarget, grossProfitTarget }
+  function addCsRep(name: string, team: string, grade: string, supplement: string): CsRep {
+    const rep: CsRep = { id: generateId(), name: name.trim(), team, grade, supplement: supplement.trim(), targets: {} }
     csReps.value.push(rep)
     saveCsReps()
     return rep
   }
 
-  function updateCsRep(id: string, name: string, title: string, team: string, grade: string, supplement: string, revenueTarget = 0, grossProfitTarget = 0) {
+  function updateCsRep(id: string, name: string, team: string, grade: string, supplement: string) {
     const idx = csReps.value.findIndex((r) => r.id === id)
     if (idx !== -1) {
-      csReps.value[idx] = { ...csReps.value[idx], name: name.trim(), title: title.trim(), team, grade, supplement: supplement.trim(), revenueTarget, grossProfitTarget }
+      csReps.value[idx] = { ...csReps.value[idx], name: name.trim(), team, grade, supplement: supplement.trim() }
       saveCsReps()
     }
   }
@@ -66,6 +76,19 @@ export function useCsReps() {
     return csReps.value.find((r) => r.name === name)
   }
 
+  function getRepTarget(id: string, fy: number): { revenueTarget: number; grossProfitTarget: number } {
+    const rep = csReps.value.find((r) => r.id === id)
+    return rep?.targets[fy] ?? { revenueTarget: 0, grossProfitTarget: 0 }
+  }
+
+  function setRepTarget(id: string, fy: number, revenueTarget: number, grossProfitTarget: number) {
+    const rep = csReps.value.find((r) => r.id === id)
+    if (rep) {
+      rep.targets[fy] = { revenueTarget, grossProfitTarget }
+      saveCsReps()
+    }
+  }
+
   return {
     csReps,
     loadCsReps,
@@ -73,5 +96,7 @@ export function useCsReps() {
     updateCsRep,
     deleteCsRep,
     getCsRepByName,
+    getRepTarget,
+    setRepTarget,
   }
 }

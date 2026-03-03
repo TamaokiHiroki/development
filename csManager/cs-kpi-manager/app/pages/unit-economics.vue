@@ -196,6 +196,10 @@ const activeTab = ref<'tenure' | 'customer'>('tenure')
         label="ユニーク顧客数"
         :value="`${ue.uniqueCustomers}社`"
       />
+      <KpiCard
+        label="ARPU（月次）"
+        :value="formatCurrencyMan(ue.arpu)"
+      />
     </div>
 
     <!-- チャート -->

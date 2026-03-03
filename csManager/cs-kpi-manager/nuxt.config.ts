@@ -12,7 +12,7 @@ export default defineNuxtConfig({
 
   nitro: {
     prerender: {
-      routes: ['/', '/performance', '/unit-economics', '/mrr-nrr', '/staff', '/staff-report', '/customer', '/quarterly-balance', '/dataset-upload', '/dataset-edit', '/cs-reps', '/goals'],
+      routes: ['/', '/performance', '/segment-performance', '/unit-economics', '/mrr-nrr', '/staff', '/staff-report', '/customer', '/quarterly-balance', '/dataset-upload', '/dataset-edit', '/cs-reps', '/segments', '/goals'],
     },
   },
 

@@ -27,6 +27,8 @@ export interface CustomerAnalysis {
   evaluation: string
   improvementPoints: string[]
   actionProposals: string[]
+  riskLevel: 'at-risk' | 'stable' | 'growth'
+  followUpRecommendation: string
 }
 
 export function useCustomerDetail() {
@@ -145,6 +147,15 @@ export function useCustomerDetail() {
       status: summary.avgDealSize >= 500000 ? 'success' : summary.avgDealSize >= 100000 ? 'warning' : 'error',
     })
 
+    // ARPU（月平均売上）
+    const arpuStatus: 'success' | 'warning' | 'error' =
+      summary.revenuePerMonth >= 300000 ? 'success' : summary.revenuePerMonth >= 100000 ? 'warning' : 'error'
+    indicators.push({
+      label: 'ARPU（月平均売上）',
+      value: formatCurrency(Math.round(summary.revenuePerMonth)),
+      status: arpuStatus,
+    })
+
     // トレンド判定
     const confirmedMonthly = monthly.filter((m) => m.month <= confirmedMonth && m.dealCount > 0)
     const firstHalf = confirmedMonthly.slice(0, Math.ceil(confirmedMonthly.length / 2))
@@ -209,11 +220,28 @@ export function useCustomerDetail() {
     }
     actionProposals.push('CS担当者と営業担当が連携し、顧客の満足度向上とリテンション施策を定期的に見直す')
 
+    // リスク分類
+    let riskLevel: 'at-risk' | 'stable' | 'growth'
+    let followUpRecommendation: string
+
+    if ((summary.tenureMonths <= 2 && trendDown) || summary.grossProfitRate < 0.15) {
+      riskLevel = 'at-risk'
+      followUpRecommendation = '早急なフォローアップが必要です。担当者による訪問・ヒアリングを実施し、取引継続に向けた課題を特定してください。粗利率改善のための価格・サービス見直しも検討してください。'
+    } else if (summary.grossProfitRate >= 0.30 && trendUp) {
+      riskLevel = 'growth'
+      followUpRecommendation = 'アップセル・クロスセルの好機です。追加サービスの提案や取引拡大に向けた戦略的アプローチを検討してください。優良顧客としてリレーション強化を図りましょう。'
+    } else {
+      riskLevel = 'stable'
+      followUpRecommendation = '安定した取引関係を維持しています。定期的なフォローアップを継続し、顧客満足度の維持と新たなニーズの発掘に努めてください。'
+    }
+
     return {
       indicators,
       evaluation,
       improvementPoints,
       actionProposals,
+      riskLevel,
+      followUpRecommendation,
     }
   }
 

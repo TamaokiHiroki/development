@@ -83,3 +83,12 @@ export function formatMonthShort(monthStr: string): string {
   const month = parseInt(monthStr.split('/')[1], 10)
   return `${month}月`
 }
+
+/**
+ * 会計年度の経過月数を返す（確定月ベース）
+ */
+export function getElapsedMonths(fy: number): number {
+  const months = getMonthsInFiscalYear(fy)
+  const confirmed = getLatestConfirmedMonth()
+  return months.filter(m => m <= confirmed).length
+}

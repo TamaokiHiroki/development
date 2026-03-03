@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { formatCurrency } from '~/utils/formatters'
+import { getCurrentFiscalYear, formatFiscalYear } from '~/utils/fiscalYear'
 
 const { loadData, loaded } = useDataset()
-const { csReps, loadCsReps, addCsRep, updateCsRep, deleteCsRep } = useCsReps()
+const { csReps, loadCsReps, addCsRep, updateCsRep, deleteCsRep, getRepTarget, setRepTarget } = useCsReps()
 const { success: toastSuccess, error: toastError } = useToast()
 
 await loadData()
@@ -11,16 +12,20 @@ onMounted(() => {
   loadCsReps()
 })
 
+// FY selector for target display
+const selectedFY = ref(getCurrentFiscalYear())
+const fyOptions = [2026, 2025]
+
 // Modal state
 const showModal = ref(false)
-const editingRep = ref<{ id: string; name: string; title: string; team: string; grade: string; supplement: string; revenueTarget: number; grossProfitTarget: number } | null>(null)
+const editingRep = ref<{ id: string; name: string; team: string; grade: string; supplement: string } | null>(null)
 const formName = ref('')
-const formTitle = ref('')
 const formTeam = ref('')
 const formGrade = ref('')
 const formSupplement = ref('')
 const formRevenueTarget = ref(0)
 const formGrossProfitTarget = ref(0)
+const formTargetFY = ref(getCurrentFiscalYear())
 const formError = ref('')
 
 const teamOptions = ['CS', 'PM', 'NB', 'NP']
@@ -29,31 +34,45 @@ const gradeOptions = ['エバンジェリスト', 'プロデューサー', 'マ�
 // Delete confirmation
 const deleteConfirmId = ref<string | null>(null)
 
+function getTargetForFY(rep: { id: string }, fy: number) {
+  return getRepTarget(rep.id, fy)
+}
+
 function openAddModal() {
   editingRep.value = null
   formName.value = ''
-  formTitle.value = ''
   formTeam.value = ''
   formGrade.value = ''
   formSupplement.value = ''
   formRevenueTarget.value = 0
   formGrossProfitTarget.value = 0
+  formTargetFY.value = selectedFY.value
   formError.value = ''
   showModal.value = true
 }
 
-function openEditModal(rep: { id: string; name: string; title: string; team: string; grade: string; supplement: string; revenueTarget: number; grossProfitTarget: number }) {
+function openEditModal(rep: { id: string; name: string; team: string; grade: string; supplement: string }) {
   editingRep.value = rep
   formName.value = rep.name
-  formTitle.value = rep.title
   formTeam.value = rep.team
   formGrade.value = rep.grade
   formSupplement.value = rep.supplement
-  formRevenueTarget.value = rep.revenueTarget
-  formGrossProfitTarget.value = rep.grossProfitTarget
+  formTargetFY.value = selectedFY.value
+  const target = getRepTarget(rep.id, formTargetFY.value)
+  formRevenueTarget.value = target.revenueTarget
+  formGrossProfitTarget.value = target.grossProfitTarget
   formError.value = ''
   showModal.value = true
 }
+
+// When FY changes in modal, reload targets
+watch(formTargetFY, (fy) => {
+  if (editingRep.value) {
+    const target = getRepTarget(editingRep.value.id, fy)
+    formRevenueTarget.value = target.revenueTarget
+    formGrossProfitTarget.value = target.grossProfitTarget
+  }
+})
 
 function closeModal() {
   showModal.value = false
@@ -68,10 +87,14 @@ function handleSave() {
   }
 
   if (editingRep.value) {
-    updateCsRep(editingRep.value.id, formName.value, formTitle.value, formTeam.value, formGrade.value, formSupplement.value, formRevenueTarget.value, formGrossProfitTarget.value)
+    updateCsRep(editingRep.value.id, formName.value, formTeam.value, formGrade.value, formSupplement.value)
+    setRepTarget(editingRep.value.id, formTargetFY.value, formRevenueTarget.value, formGrossProfitTarget.value)
     toastSuccess(`「${formName.value}」を更新しました`)
   } else {
-    addCsRep(formName.value, formTitle.value, formTeam.value, formGrade.value, formSupplement.value, formRevenueTarget.value, formGrossProfitTarget.value)
+    const rep = addCsRep(formName.value, formTeam.value, formGrade.value, formSupplement.value)
+    if (formRevenueTarget.value || formGrossProfitTarget.value) {
+      setRepTarget(rep.id, formTargetFY.value, formRevenueTarget.value, formGrossProfitTarget.value)
+    }
     toastSuccess(`「${formName.value}」を登録しました`)
   }
   closeModal()
@@ -109,6 +132,16 @@ function cancelDelete() {
       </div>
     </div>
 
+    <!-- FYセレクタ -->
+    <div class="filter-bar" style="margin-bottom: var(--space-md);">
+      <div class="filter-group">
+        <span class="filter-label">目標表示年度</span>
+        <select v-model="selectedFY" class="filter-select">
+          <option v-for="fy in fyOptions" :key="fy" :value="fy">{{ formatFiscalYear(fy) }}</option>
+        </select>
+      </div>
+    </div>
+
     <!-- テーブル -->
     <div class="data-table-wrapper">
       <div class="data-table-header">
@@ -120,8 +153,8 @@ function cancelDelete() {
             <th>担当者名</th>
             <th>チーム</th>
             <th>グレード</th>
-            <th class="text-right">売上目標</th>
-            <th class="text-right">粗利目標</th>
+            <th class="text-right">売上目標（{{ formatFiscalYear(selectedFY) }}）</th>
+            <th class="text-right">粗利目標（{{ formatFiscalYear(selectedFY) }}）</th>
             <th>補足事項</th>
             <th style="width: 180px;">操作</th>
           </tr>
@@ -131,8 +164,8 @@ function cancelDelete() {
             <td style="font-weight: 500;">{{ rep.name }}</td>
             <td>{{ rep.team || '―' }}</td>
             <td>{{ rep.grade || '―' }}</td>
-            <td class="text-right">{{ rep.revenueTarget ? formatCurrency(rep.revenueTarget) : '―' }}</td>
-            <td class="text-right">{{ rep.grossProfitTarget ? formatCurrency(rep.grossProfitTarget) : '―' }}</td>
+            <td class="text-right">{{ getTargetForFY(rep, selectedFY).revenueTarget ? formatCurrency(getTargetForFY(rep, selectedFY).revenueTarget) : '―' }}</td>
+            <td class="text-right">{{ getTargetForFY(rep, selectedFY).grossProfitTarget ? formatCurrency(getTargetForFY(rep, selectedFY).grossProfitTarget) : '―' }}</td>
             <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" :title="rep.supplement">{{ rep.supplement || '―' }}</td>
             <td>
               <template v-if="deleteConfirmId === rep.id">
@@ -203,14 +236,20 @@ function cancelDelete() {
                 placeholder="例: 新人研修中、主にSaaS案件を担当"
               ></textarea>
             </div>
+            <div class="form-group">
+              <label class="form-label">目標設定年度</label>
+              <select v-model="formTargetFY" class="form-select">
+                <option v-for="fy in fyOptions" :key="fy" :value="fy">{{ formatFiscalYear(fy) }}</option>
+              </select>
+            </div>
             <div class="form-row">
               <div class="form-group">
-                <label class="form-label">今期売上目標</label>
+                <label class="form-label">売上目標（{{ formatFiscalYear(formTargetFY) }}）</label>
                 <input v-model.number="formRevenueTarget" type="number" class="form-input" placeholder="例: 10000000" min="0">
                 <div class="form-hint">売上目標額（円）</div>
               </div>
               <div class="form-group">
-                <label class="form-label">今期粗利目標</label>
+                <label class="form-label">粗利目標（{{ formatFiscalYear(formTargetFY) }}）</label>
                 <input v-model.number="formGrossProfitTarget" type="number" class="form-input" placeholder="例: 3000000" min="0">
                 <div class="form-hint">粗利目標額（円）</div>
               </div>
