@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Bulk Image Downloader">
+  <rect width="128" height="128" rx="18" fill="#2f80ed"/>
+  <rect x="18" y="24" width="92" height="80" rx="10" fill="#ffffff"/>
+  <circle cx="44" cy="48" r="8" fill="#2f80ed"/>
+  <path d="M30 88l20-22 14 14 16-18 18 26H30z" fill="#2f80ed"/>
+  <path d="M86 20v20m-10-10h20" stroke="#ffffff" stroke-width="8" stroke-linecap="round"/>
+</svg>

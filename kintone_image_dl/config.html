@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>画像一括ダウンロード - 設定</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 {
+      margin-top: 0;
+      color: #333;
+      font-size: 24px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #555;
+    }
+    input[type="date"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    .button-group {
+      margin-top: 30px;
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      flex: 1;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .btn-primary {
+      background-color: #3498db;
+      color: white;
+    }
+    .btn-primary:hover {
+      background-color: #2980b9;
+    }
+    .btn-secondary {
+      background-color: #95a5a6;
+      color: white;
+    }
+    .btn-secondary:hover {
+      background-color: #7f8c8d;
+    }
+    .info {
+      background-color: #e8f4f8;
+      border-left: 4px solid #3498db;
+      padding: 12px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+    }
+    .info p {
+      margin: 0;
+      color: #555;
+      font-size: 14px;
+    }
+    .status {
+      margin-top: 20px;
+      padding: 12px;
+      border-radius: 4px;
+      display: none;
+    }
+    .status.success {
+      background-color: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+    }
+    .status.error {
+      background-color: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+    }
+    .status.info {
+      background-color: #d1ecf1;
+      border: 1px solid #bee5eb;
+      color: #0c5460;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>画像一括ダウンロード設定</h1>
+    
+    <div class="info">
+      <p>レコードの作成期間を指定して、その期間内に作成されたレコードに含まれる画像を一括でダウンロードできます。</p>
+    </div>
+
+    <form id="configForm">
+      <div class="form-group">
+        <label for="startDate">開始日</label>
+        <input type="date" id="startDate" name="startDate" required>
+      </div>
+
+      <div class="form-group">
+        <label for="endDate">終了日</label>
+        <input type="date" id="endDate" name="endDate" required>
+      </div>
+
+      <div class="button-group">
+        <button type="button" class="btn-secondary" id="cancelBtn">キャンセル</button>
+        <button type="submit" class="btn-primary" id="downloadBtn">ダウンロード開始</button>
+      </div>
+    </form>
+
+    <div id="status" class="status"></div>
+  </div>
+
+  <script>
+    // デフォルトで今日の日付を設定
+    const today = new Date();
+    const oneMonthAgo = new Date(today);
+    oneMonthAgo.setMonth(today.getMonth() - 1);
+
+    document.getElementById('startDate').value = oneMonthAgo.toISOString().split('T')[0];
+    document.getElementById('endDate').value = today.toISOString().split('T')[0];
+
+    const form = document.getElementById('configForm');
+    const statusDiv = document.getElementById('status');
+
+    function showStatus(message, type) {
+      statusDiv.textContent = message;
+      statusDiv.className = 'status ' + type;
+      statusDiv.style.display = 'block';
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const startDate = document.getElementById('startDate').value;
+      const endDate = document.getElementById('endDate').value;
+
+      if (new Date(startDate) > new Date(endDate)) {
+        showStatus('開始日は終了日より前の日付を指定してください。', 'error');
+        return;
+      }
+
+      showStatus('処理を開始しています...', 'info');
+      document.getElementById('downloadBtn').disabled = true;
+
+      try {
+        // プラグイン設定を保存
+        const config = {
+          startDate: startDate,
+          endDate: endDate
+        };
+        
+        // メイン処理を実行（desktop.jsで処理）
+        if (window.kintone && window.kintone.plugin.app.setConfig) {
+          window.kintone.plugin.app.setConfig(config);
+        }
+
+        // 親ウィンドウにメッセージを送信
+        if (window.parent) {
+          window.parent.postMessage({
+            type: 'startDownload',
+            config: config
+          }, '*');
+        }
+
+        showStatus('ダウンロード処理を開始しました。', 'success');
+      } catch (error) {
+        showStatus('エラーが発生しました: ' + error.message, 'error');
+        document.getElementById('downloadBtn').disabled = false;
+      }
+    });
+
+    document.getElementById('cancelBtn').addEventListener('click', () => {
+      if (window.parent) {
+        window.parent.postMessage({ type: 'cancel' }, '*');
+      }
+    });
+  </script>
+</body>
+</html>

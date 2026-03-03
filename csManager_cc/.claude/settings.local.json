@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \":*)",
+      "Bash(npx nuxi@latest init cs-kpi-manager --no-install)",
+      "Bash(npx nuxi@latest init cs-kpi-manager --no-install --template minimal)",
+      "Bash(npm install chart.js vue-chartjs papaparse @types/papaparse)",
+      "Bash(npm install)",
+      "Bash(npm run build)",
+      "Bash(git init)",
+      "Bash(git add -A)",
+      "Bash(git -C /Users/tamaoki_hiroki/development/csManager_cc/cs-kpi-manager branch -m master main)",
+      "Bash(git -C:*)",
+      "Bash(claude mcp add github)",
+      "Bash(echo \"Exit code: $?\")",
+      "Bash(claude mcp add --help)",
+      "Bash(claude mcp add --transport http github https://api.githubcopilot.com/mcp/)",
+      "Bash(claude mcp add github -- npx -y @modelcontextprotocol/server-github)",
+      "Bash(claude mcp list)",
+      "Bash(# プロジェクトスコープの設定を確認 cat /Users/tamaoki_hiroki/.claude.json)",
+      "Bash(claude mcp add -s user -e GITHUB_PERSONAL_ACCESS_TOKEN=YOUR_GITHUB_PAT -- github -- npx -y @modelcontextprotocol/server-github)"
+    ]
+  }
+}

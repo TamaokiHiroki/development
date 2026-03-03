@@ -1,0 +1,19 @@
+{
+  "manifest_version": 1,
+  "version": "1.0.0",
+  "type": "APP",
+  "name": {
+    "ja": "画像一括ダウンロード",
+    "en": "Bulk Image Downloader"
+  },
+  "description": {
+    "ja": "レコードの作成期間を指定して、画像を一括でダウンロードできます",
+    "en": "Download images in bulk by specifying the record creation period"
+  },
+  "icon": "icon.png",
+  "desktop": {
+    "js": [
+      "desktop.js"
+    ]
+  }
+}

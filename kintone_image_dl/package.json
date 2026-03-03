@@ -1,0 +1,21 @@
+{
+  "name": "kintone-image-downloader",
+  "version": "1.0.0",
+  "description": "Kintoneプラグイン: レコードの作成期間を指定して画像を一括ダウンロード",
+  "main": "desktop.js",
+  "scripts": {
+    "build": "echo 'プラグインをビルドするには、kintone-plugin-packerを使用してください'",
+    "package": "kintone-plugin-packer ."
+  },
+  "keywords": [
+    "kintone",
+    "plugin",
+    "image",
+    "download"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@kintone/plugin-packer": "^7.0.5"
+  }
+}
