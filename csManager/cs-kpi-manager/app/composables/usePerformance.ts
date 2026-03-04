@@ -67,8 +67,22 @@ export function usePerformance() {
     const yoyGP = yoyDeals.reduce((s, d) => s + d.grossProfit, 0)
 
     // 累計
-    const ytdRevenue = fyDeals.filter((d) => d.completionMonth <= currentMonth).reduce((s, d) => s + d.totalAmount, 0)
-    const ytdGP = fyDeals.filter((d) => d.completionMonth <= currentMonth).reduce((s, d) => s + d.grossProfit, 0)
+    const ytdDeals = fyDeals.filter((d) => d.completionMonth <= currentMonth)
+    const ytdRevenue = ytdDeals.reduce((s, d) => s + d.totalAmount, 0)
+    const ytdGP = ytdDeals.reduce((s, d) => s + d.grossProfit, 0)
+    const ytdDealCount = ytdDeals.length
+
+    // YTD前年同期比
+    const fyMonths = getMonthsInFiscalYear(fy)
+    const elapsedMonths = fyMonths.filter((m) => m <= currentMonth)
+    const prevFyMonths = getMonthsInFiscalYear(fy - 1)
+    const prevElapsedMonths = prevFyMonths.slice(0, elapsedMonths.length)
+    const prevFyDeals = allDeals.filter(
+      (d) => getFiscalYear(d.completionMonth) === fy - 1
+        && prevElapsedMonths.includes(d.completionMonth),
+    )
+    const prevYtdRevenue = prevFyDeals.reduce((s, d) => s + d.totalAmount, 0)
+    const prevYtdGP = prevFyDeals.reduce((s, d) => s + d.grossProfit, 0)
 
     return {
       currentMonth: {
@@ -90,6 +104,16 @@ export function usePerformance() {
         revenue: ytdRevenue,
         grossProfit: ytdGP,
         grossProfitRate: ytdRevenue !== 0 ? ytdGP / ytdRevenue : 0,
+        dealCount: ytdDealCount,
+      },
+      ytdYoy: {
+        revenue: formatTrend(ytdRevenue, prevYtdRevenue),
+        grossProfit: formatTrend(ytdGP, prevYtdGP),
+        grossProfitRate: formatTrend(
+          ytdRevenue !== 0 ? ytdGP / ytdRevenue : 0,
+          prevYtdRevenue !== 0 ? prevYtdGP / prevYtdRevenue : 0,
+        ),
+        dealCount: formatTrend(ytdDealCount, prevFyDeals.length),
       },
     }
   }

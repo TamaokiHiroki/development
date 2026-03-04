@@ -8,8 +8,10 @@ const { getKpiSummary, getMonthlyData } = usePerformance()
 const { getUnitEconomics } = useUnitEconomics()
 const { getCurrentMrr, getMonthlyMrr } = useMrr()
 const { getSalesRepMetrics } = useStaffMetrics()
+const { loadGoals, getGoal } = useGoals()
 
 await loadData()
+onMounted(() => { loadGoals() })
 
 const fy = ref(2026)
 const currentMonth = computed(() => {
@@ -27,6 +29,16 @@ const currentMonth = computed(() => {
 const summary = computed(() => getKpiSummary(fy.value, 'won', currentMonth.value))
 const ue = computed(() => getUnitEconomics(fy.value))
 const mrr = computed(() => getCurrentMrr(fy.value, currentMonth.value))
+
+const currentGoal = computed(() => getGoal(fy.value))
+const revenueProgress = computed(() => {
+  if (!currentGoal.value || currentGoal.value.revenueTarget === 0) return null
+  return summary.value.ytd.revenue / currentGoal.value.revenueTarget
+})
+const gpProgress = computed(() => {
+  if (!currentGoal.value || currentGoal.value.grossProfitTarget === 0) return null
+  return summary.value.ytd.grossProfit / currentGoal.value.grossProfitTarget
+})
 
 const ltvCacStatus = computed(() => {
   const ratio = ue.value.ltvCacRatio
@@ -84,7 +96,7 @@ const topSalesReps = computed(() => getSalesRepMetrics(fy.value, 'won').slice(0,
 </script>
 
 <template>
-  <div v-if="loaded">
+  <div v-if="loaded" class="dashboard-page">
     <div class="page-header">
       <h2>ダッシュボード</h2>
       <p>CS事業部 KPI サマリー - FY{{ fy }}</p>
@@ -96,7 +108,73 @@ const topSalesReps = computed(() => getSalesRepMetrics(fy.value, 'won').slice(0,
       :show-stage-filter="false"
     />
 
-    <!-- KPIサマリーカード -->
+    <!-- YTD 実績セクション -->
+    <div class="section-header">
+      <h3 class="section-title">年度累計（YTD）実績</h3>
+      <p class="section-desc">FY{{ fy }} 期首〜最新確定月の累計実績</p>
+    </div>
+
+    <div class="kpi-grid">
+      <KpiCard
+        label="YTD 売上高"
+        :value="formatCurrency(summary.ytd.revenue)"
+        :trend-text="summary.ytdYoy.revenue.text"
+        :trend-direction="summary.ytdYoy.revenue.direction"
+        :trend-color="summary.ytdYoy.revenue.color"
+        trend-label="前年同期比"
+      />
+      <KpiCard
+        label="YTD 粗利高"
+        :value="formatCurrency(summary.ytd.grossProfit)"
+        :trend-text="summary.ytdYoy.grossProfit.text"
+        :trend-direction="summary.ytdYoy.grossProfit.direction"
+        :trend-color="summary.ytdYoy.grossProfit.color"
+        trend-label="前年同期比"
+      />
+      <KpiCard
+        label="YTD 粗利率"
+        :value="formatPercent(summary.ytd.grossProfitRate)"
+        :trend-text="summary.ytdYoy.grossProfitRate.text"
+        :trend-direction="summary.ytdYoy.grossProfitRate.direction"
+        :trend-color="summary.ytdYoy.grossProfitRate.color"
+        trend-label="前年同期比"
+      />
+      <KpiCard
+        label="YTD 案件数"
+        :value="`${summary.ytd.dealCount}件`"
+        :trend-text="summary.ytdYoy.dealCount.text"
+        :trend-direction="summary.ytdYoy.dealCount.direction"
+        :trend-color="summary.ytdYoy.dealCount.color"
+        trend-label="前年同期比"
+      />
+    </div>
+
+    <!-- 目標達成率 -->
+    <div v-if="currentGoal" class="kpi-grid">
+      <KpiCard
+        label="売上高 目標達成率"
+        :value="revenueProgress !== null ? formatPercent(revenueProgress) : '-'"
+        :trend-text="`${formatCompact(summary.ytd.revenue)} / ${formatCompact(currentGoal.revenueTarget)}`"
+        trend-direction="flat"
+        color="var(--color-text)"
+        trend-label="実績 / 目標"
+      />
+      <KpiCard
+        label="粗利高 目標達成率"
+        :value="gpProgress !== null ? formatPercent(gpProgress) : '-'"
+        :trend-text="`${formatCompact(summary.ytd.grossProfit)} / ${formatCompact(currentGoal.grossProfitTarget)}`"
+        trend-direction="flat"
+        color="var(--color-text)"
+        trend-label="実績 / 目標"
+      />
+    </div>
+
+    <!-- 当月実績セクション -->
+    <div class="section-header">
+      <h3 class="section-title">当月実績</h3>
+      <p class="section-desc">{{ currentMonth }} の実績サマリー</p>
+    </div>
+
     <div class="kpi-grid">
       <KpiCard
         label="当月売上高"
@@ -169,28 +247,51 @@ const topSalesReps = computed(() => getSalesRepMetrics(fy.value, 'won').slice(0,
         </tbody>
       </table>
     </div>
-
-    <!-- YTD サマリー -->
-    <div class="kpi-grid mt-md">
-      <KpiCard
-        label="YTD 売上高"
-        :value="formatCurrency(summary.ytd.revenue)"
-        :trend-text="summary.yoy.revenue.text"
-        :trend-direction="summary.yoy.revenue.direction"
-        :trend-color="summary.yoy.revenue.color"
-        trend-label="前年同期比"
-      />
-      <KpiCard
-        label="YTD 粗利高"
-        :value="formatCurrency(summary.ytd.grossProfit)"
-        :trend-text="summary.yoy.grossProfit.text"
-        :trend-direction="summary.yoy.grossProfit.direction"
-        :trend-color="summary.yoy.grossProfit.color"
-        trend-label="前年同期比"
-      />
-    </div>
   </div>
   <div v-else style="display: flex; align-items: center; justify-content: center; height: 50vh; color: var(--color-text-subtle);">
     データを読み込み中...
   </div>
 </template>
+
+<style scoped>
+.dashboard-page {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.section-header {
+  margin-bottom: var(--space-sm);
+}
+
+.section-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: var(--space-sm);
+}
+
+.section-desc {
+  font-size: 0.875rem;
+  color: var(--color-text-subtle);
+  margin-bottom: var(--space-md);
+}
+
+/* Keep dashboard sections stable even if a parent gets grid styles */
+.dashboard-page :deep(.kpi-grid),
+.dashboard-page :deep(.chart-grid),
+.dashboard-page :deep(.card) {
+  min-width: 0;
+}
+
+.dashboard-page :deep(.chart-grid) {
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.dashboard-page :deep(.card) {
+  overflow-x: auto;
+}
+
+.dashboard-page :deep(.data-table) {
+  min-width: 720px;
+}
+</style>
