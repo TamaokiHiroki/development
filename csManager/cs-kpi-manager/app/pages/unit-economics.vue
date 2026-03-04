@@ -178,6 +178,13 @@ const activeTab = ref<'tenure' | 'customer'>('tenure')
     <!-- KPIカード -->
     <div class="kpi-grid">
       <KpiCard
+        label="LTV:CAC比"
+        :value="ue.ltvCacRatio.toFixed(1)"
+        :trend-text="ltvCacStatus.label"
+        :trend-direction="ue.ltvCacRatio >= 3 ? 'up' : ue.ltvCacRatio >= 1 ? 'flat' : 'down'"
+        :trend-color="ltvCacStatus.color"
+      />
+      <KpiCard
         label="LTV（平均顧客生涯価値）"
         :value="formatCurrencyMan(ue.ltv)"
       />
@@ -186,19 +193,12 @@ const activeTab = ref<'tenure' | 'customer'>('tenure')
         :value="formatCurrencyMan(ue.cac)"
       />
       <KpiCard
-        label="LTV/CAC比"
-        :value="ue.ltvCacRatio.toFixed(1)"
-        :trend-text="ltvCacStatus.label"
-        :trend-direction="ue.ltvCacRatio >= 3 ? 'up' : ue.ltvCacRatio >= 1 ? 'flat' : 'down'"
-        :trend-color="ltvCacStatus.color"
+        label="ARPU（月次）"
+        :value="formatCurrencyMan(ue.arpu)"
       />
       <KpiCard
         label="ユニーク顧客数"
         :value="`${ue.uniqueCustomers}社`"
-      />
-      <KpiCard
-        label="ARPU（月次）"
-        :value="formatCurrencyMan(ue.arpu)"
       />
     </div>
 

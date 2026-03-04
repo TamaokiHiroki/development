@@ -11,8 +11,13 @@ const {
   getDealList,
   generateCustomerAnalysis,
 } = useCustomerDetail()
+const { loadCacCosts, setCacCost, removeCacCost, getCacCost, getCustomerCacTotal } = useCacCosts()
 
 await loadData()
+
+onMounted(() => {
+  loadCacCosts()
+})
 
 const fy = ref(getCurrentFiscalYear())
 const customerName = computed(() => decodeURIComponent(route.params.name as string))
@@ -92,28 +97,34 @@ const monthlyRows = computed(() =>
   })),
 )
 
-// 案件一覧テーブル
-const dealColumns = [
-  { key: 'completionMonth', label: '完了月', sortable: true },
-  { key: 'dealName', label: '商談名', sortable: true },
-  { key: 'type', label: '種類', sortable: true },
-  { key: 'totalAmount', label: '売上高', align: 'right' as const, sortable: true, format: (v: number) => formatCurrency(v) },
-  { key: 'grossProfit', label: '粗利', align: 'right' as const, sortable: true, format: (v: number) => formatCurrency(v) },
-  { key: 'csRep', label: '業務担当', sortable: true },
-  { key: 'salesRep', label: '営業担当', sortable: true },
-]
+// CAC入力管理
+const cacInputs = ref<Record<string, string>>({})
 
-const dealRows = computed(() =>
-  dealList.value.map((d) => ({
-    completionMonth: d.completionMonth,
-    dealName: d.dealName,
-    type: d.type,
-    totalAmount: d.totalAmount,
-    grossProfit: d.grossProfit,
-    csRep: d.csRep,
-    salesRep: d.salesRep,
-  })),
-)
+watch(dealList, (deals) => {
+  for (const d of deals) {
+    const existing = getCacCost(d.dealId)
+    if (existing !== undefined && !(d.dealId in cacInputs.value)) {
+      cacInputs.value[d.dealId] = existing.toString()
+    }
+  }
+}, { immediate: true })
+
+function handleCacSave(dealId: string) {
+  const raw = cacInputs.value[dealId]?.trim() || ''
+  const num = parseInt(raw.replace(/,/g, ''), 10)
+  if (!raw || isNaN(num) || num === 0) {
+    removeCacCost(dealId)
+    cacInputs.value[dealId] = ''
+  } else {
+    setCacCost(dealId, num)
+    cacInputs.value[dealId] = num.toString()
+  }
+}
+
+const customerCacTotal = computed(() => {
+  const dealIds = dealList.value.map((d) => d.dealId)
+  return getCustomerCacTotal(dealIds)
+})
 </script>
 
 <template>
@@ -158,6 +169,7 @@ const dealRows = computed(() =>
         <KpiCard label="平均案件単価" :value="formatCurrency(Math.round(kpiSummary.avgDealSize))" />
         <KpiCard label="月あたり粗利" :value="formatCurrency(Math.round(kpiSummary.gpPerMonth))" />
         <KpiCard label="ARPU（月平均売上）" :value="formatCurrency(Math.round(kpiSummary.revenuePerMonth))" />
+        <KpiCard v-if="customerCacTotal > 0" label="CAC合計（手動登録）" :value="formatCurrency(customerCacTotal)" />
       </div>
 
       <!-- 月次推移チャート -->
@@ -181,14 +193,57 @@ const dealRows = computed(() =>
         :page-size="12"
       />
 
-      <!-- 案件一覧 -->
+      <!-- 案件一覧・CAC登録 -->
       <div class="section-gap">
-        <CommonDataTable
-          title="案件一覧"
-          :columns="dealColumns"
-          :rows="dealRows"
-          :page-size="15"
-        />
+        <div class="data-table-wrapper">
+          <div class="data-table-header">
+            <span class="data-table-title">案件一覧・CAC登録</span>
+            <span v-if="customerCacTotal > 0" class="cac-total-badge">
+              CAC合計: {{ formatCurrency(customerCacTotal) }}
+            </span>
+          </div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>完了月</th>
+                <th>商談名</th>
+                <th>種類</th>
+                <th class="text-right">売上高</th>
+                <th class="text-right">粗利</th>
+                <th>業務担当</th>
+                <th>営業担当</th>
+                <th class="text-right">CACコスト</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="d in dealList" :key="d.dealId">
+                <td>{{ d.completionMonth }}</td>
+                <td>{{ d.dealName }}</td>
+                <td>{{ d.type }}</td>
+                <td class="text-right">{{ formatCurrency(d.totalAmount) }}</td>
+                <td class="text-right">{{ formatCurrency(d.grossProfit) }}</td>
+                <td>{{ d.csRep }}</td>
+                <td>{{ d.salesRep }}</td>
+                <td class="text-right">
+                  <input
+                    v-model="cacInputs[d.dealId]"
+                    type="text"
+                    class="form-input form-input--sm text-right"
+                    placeholder="0"
+                    inputmode="numeric"
+                    @blur="handleCacSave(d.dealId)"
+                    @keydown.enter="handleCacSave(d.dealId)"
+                  />
+                </td>
+              </tr>
+              <tr v-if="dealList.length === 0">
+                <td colspan="8" style="text-align: center; padding: 24px; color: var(--color-text-subtle);">
+                  案件データがありません
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <!-- 評価分析 -->
@@ -467,5 +522,32 @@ const dealRows = computed(() =>
 .risk-badge--success {
   background: #E3FCEF;
   color: #006644;
+}
+
+.cac-total-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  background: #DEEBFF;
+  color: var(--color-primary);
+  border-radius: 12px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.form-input--sm {
+  padding: 4px 8px;
+  font-size: 0.8125rem;
+  width: 100px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-card);
+  color: var(--color-text);
+}
+
+.form-input--sm:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(0, 82, 204, 0.2);
 }
 </style>

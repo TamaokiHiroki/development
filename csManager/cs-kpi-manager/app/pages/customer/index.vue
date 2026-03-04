@@ -57,9 +57,9 @@ const riskLabels: Record<string, string> = {
 
     <!-- KPIサマリーカード -->
     <div class="kpi-grid">
+      <KpiCard label="LTV:CAC比" :value="ue.ltvCacRatio.toFixed(1)" />
       <KpiCard label="LTV（平均顧客生涯価値）" :value="formatCurrencyMan(ue.ltv)" />
       <KpiCard label="CAC（顧客獲得コスト）" :value="formatCurrencyMan(ue.cac)" />
-      <KpiCard label="LTV/CAC比" :value="ue.ltvCacRatio.toFixed(1)" />
       <KpiCard label="ARPU（月次）" :value="formatCurrencyMan(ue.arpu)" />
     </div>
 
